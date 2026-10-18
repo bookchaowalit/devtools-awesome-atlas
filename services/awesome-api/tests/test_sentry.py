@@ -1,0 +1,98 @@
+import importlib
+import sys
+
+import pytest
+
+from awesome_api import _sentry
+
+
+def test_no_dsn_is_a_noop(monkeypatch):
+    monkeypatch.delenv("SENTRY_DSN", raising=False)
+    calls = []
+    monkeypatch.setitem(
+        sys.modules,
+        "sentry_sdk",
+        type("Fake", (), {"init": lambda **kw: calls.append(kw)}),
+    )
+    _sentry.init_sentry()
+    assert calls == []
+
+
+def test_dsn_initialises_errors_only_without_pii(monkeypatch, capsys):
+    calls, tags = [], {}
+
+    class Fake:
+        @staticmethod
+        def init(**kw):
+            calls.append(kw)
+
+        @staticmethod
+        def set_tag(key, value):
+            tags[key] = value
+
+    monkeypatch.setitem(sys.modules, "sentry_sdk", Fake)
+    monkeypatch.setenv("SENTRY_DSN", "https://public@o0.ingest.sentry.io/0")
+    monkeypatch.setenv("RAILWAY_SERVICE_NAME", "awesome-api")
+    monkeypatch.delenv("SENTRY_ENVIRONMENT", raising=False)
+    _sentry.init_sentry()
+    assert calls[0]["environment"] == "production"
+    assert calls[0]["traces_sample_rate"] == 0.0
+    assert calls[0]["send_default_pii"] is False
+    assert calls[0]["include_local_variables"] is False
+    assert calls[0]["max_request_body_size"] == "never"
+    assert calls[0]["before_send"] is _sentry._scrub_event
+    assert tags == {"service": "awesome-api"}
+    assert "sentry: enabled for awesome-api" in capsys.readouterr().err
+
+
+def test_real_sdk_installed():
+    pytest.importorskip("sentry_sdk")
+    assert importlib.import_module("sentry_sdk")
+
+
+def test_scrub_removes_url_passwords_tokens_and_jwts():
+    text = (
+        "connect postgresql://habits:"
+        "s3cr%40t"  # split so secret scanners do not read a synthetic URL as a credential
+        "@ep-x.neon.tech/habits failed; "
+        "password=hunter2 Authorization: Bearer abc.def-ghi "
+        "eyJhbGciOiJSUzI1NiJ9"
+        "."
+        "eyJzdWIiOiJvd25lciJ9"
+        "."
+        "c2lnbmF0dXJl"
+    )  # split: not a secret
+    out = _sentry.scrub(text)
+    assert "s3cr%40t" not in out and "hunter2" not in out and "abc.def-ghi" not in out
+    assert "eyJhbGciOiJSUzI1NiJ9" not in out
+    assert "postgresql://habits:***@ep-x.neon.tech/habits" in out
+
+
+def test_scrub_event_drops_request_details_and_extra():
+    event = {
+        "exception": {"values": [{"value": "bad url postgres://u:pw@h/db"}]},
+        "request": {
+            "method": "POST",
+            "url": "https://x/habits",
+            "data": {"notes": "x"},
+            "headers": {"authorization": "Bearer t"},
+            "query_string": "token=t",
+        },
+        "breadcrumbs": {
+            "values": [
+                {"message": "GET with Bearer abc", "data": {"url": "https://x?token=t"}}
+            ]
+        },
+        "extra": {"sys.argv": ["--token", "t"]},
+    }
+    out = _sentry._scrub_event(event, {})
+    assert out["exception"]["values"][0]["value"] == "bad url postgres://u:***@h/db"
+    assert out["request"] == {"method": "POST", "url": "https://x/habits"}
+    assert "data" not in out["breadcrumbs"]["values"][0]
+    assert "abc" not in out["breadcrumbs"]["values"][0]["message"]
+    assert "extra" not in out
+
+
+def test_capture_is_a_noop_without_dsn(monkeypatch):
+    monkeypatch.delenv("SENTRY_DSN", raising=False)
+    _sentry.capture(RuntimeError("x"))  # must not import or call sentry_sdk
