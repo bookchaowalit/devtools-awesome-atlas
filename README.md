@@ -57,6 +57,8 @@ cd services/awesome-api
 | awesome-api | `services/awesome-api/Dockerfile` | 3510 | `/health` |
 
 API ใช้ persistent volume ที่ `/data` และเว็บเรียก API ผ่านเครือข่ายภายใน
+Railway variables ของ awesome-api มี `SENTRY_DSN` (error reporting; ไม่ตั้ง = ปิด, ดู `services/awesome-api/awesome_api/_sentry.py`)
+และ `SENTRY_ENVIRONMENT`; awesome-web เป็นไฟล์ static บน Caddy ไม่มี server process ของแอปจึงไม่มี Sentry
 การสร้าง domain อย่างเดียวไม่ยืนยันว่าเว็บออนไลน์: ตรวจ deployment และ HTTP ก่อนใช้งาน
 รายละเอียดและสถานะจริงอยู่ใน [คู่มือ Railway](services/awesome-api/deployment/README.md)
 และ [deployment record](services/awesome-api/deployment/railway-state.json)

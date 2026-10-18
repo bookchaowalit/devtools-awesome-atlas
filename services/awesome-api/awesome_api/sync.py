@@ -7,6 +7,7 @@ from urllib.error import HTTPError
 from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
+from ._sentry import capture
 from .config import Config
 from .daily import DAILY_SOURCE, parse_daily, validate_date
 from .lake import Lake, utc_now
@@ -100,6 +101,7 @@ class Coordinator:
         )
         self.today = lambda: datetime.now(UTC).date()
         self.lock = threading.Lock()
+        self._reported = False  # one Sentry event per sync round, not one per source
         self.next_sync_at = utc_now() if config.sync_enabled else None
 
     def _capture(self, source_id: str):
@@ -141,6 +143,7 @@ class Coordinator:
             self.store.replace_capture(self.lake, manifest)
             return True
         except Exception as error:  # noqa: BLE001 - record the failure and keep syncing other sources
+            self._report(error)
             self.store.failed(source_id, str(error) or type(error).__name__)
             return False
 
@@ -162,6 +165,7 @@ class Coordinator:
             self.store.replace_capture(self.lake, manifest)
             return True
         except Exception as error:  # noqa: BLE001 - record the failure and keep syncing other sources
+            self._report(error)
             self.store.daily_error(
                 f"{requested_date}: {str(error) or type(error).__name__}"
             )
@@ -181,9 +185,15 @@ class Coordinator:
         self.store.daily_error("; ".join(errors) if errors else None)
         return not errors, any_success
 
+    def _report(self, error: Exception) -> None:
+        if not self._reported:
+            self._reported = True
+            capture(error)
+
     def sync(self, stop=None) -> bool:
         if not self.lock.acquire(blocking=False):
             return False
+        self._reported = False
         try:
             success = self._capture(ROOT_ID)
             any_success = success
