@@ -3,6 +3,7 @@
 import re
 import unicodedata
 from dataclasses import dataclass
+from typing import Any
 from urllib.parse import urlsplit
 
 ROOT_ID = "sindresorhus/awesome"
@@ -120,10 +121,10 @@ def _extract(markdown: str, *, source_id: str, categories: list[str], catalog: b
     lines, references = _lines(markdown)
     if not catalog:
         lines = _setext_headings(lines)
-    records = {}
-    category_names = {}
+    records: dict[str, dict[str, Any]] = {}
+    category_names: dict[str, str] = {}
     current_categories = categories
-    current_sections = []
+    current_sections: list[str] = []
     for line in lines:
         heading_pattern = (
             r"^\s{0,3}#{2,6}\s+(.+?)\s*#*\s*$"

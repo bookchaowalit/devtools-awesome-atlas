@@ -450,7 +450,7 @@ def test_explicit_ids_resolve_daily_bookmarks_without_inflating_catalog(discover
             ).json()["total"]
             == 1
         )
-        for excluded in [
+        excluded_filters: list[dict[str, str | int]] = [
             {"q": "%"},
             {"q": "alpha"},
             {"kind": "list"},
@@ -458,7 +458,8 @@ def test_explicit_ids_resolve_daily_bookmarks_without_inflating_catalog(discover
             {"category": "tools"},
             {"section": "CLI"},
             {"min_sources": 1},
-        ]:
+        ]
+        for excluded in excluded_filters:
             result = client.get(
                 "/api/v1/projects", params={"ids": "ghost/repo", **excluded}
             ).json()

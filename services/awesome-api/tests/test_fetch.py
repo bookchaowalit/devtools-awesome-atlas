@@ -1,3 +1,4 @@
+from email.message import Message
 from io import BytesIO
 from urllib.error import HTTPError
 from urllib.request import Request
@@ -26,7 +27,7 @@ def test_fetch_uses_only_raw_host_head_and_uppercase_fallback(monkeypatch):
         def open(self, request, timeout):
             calls.append((request.full_url, timeout, request.headers))
             if request.full_url.endswith("/readme.md"):
-                raise HTTPError(request.full_url, 404, "missing", {}, None)
+                raise HTTPError(request.full_url, 404, "missing", Message(), None)
             return Response(b"# Markdown")
 
     monkeypatch.setattr("awesome_api.sync.build_opener", lambda *args: Opener())
@@ -86,7 +87,7 @@ def test_daily_fetch_uses_fixed_provider_raw_path_and_missing_day_is_neutral(
     class Opener:
         def open(self, request, timeout):
             requests.append((request.full_url, request.headers, timeout))
-            raise HTTPError(request.full_url, 404, "missing archive", {}, None)
+            raise HTTPError(request.full_url, 404, "missing archive", Message(), None)
 
     monkeypatch.setattr("awesome_api.sync.build_opener", lambda *args: Opener())
     assert fetch_daily(DAILY_SOURCE["id"], "2026-10-04", Config()) is None

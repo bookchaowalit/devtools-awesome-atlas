@@ -1,5 +1,6 @@
 import importlib
 import sys
+from typing import Any
 
 import pytest
 
@@ -20,7 +21,8 @@ def test_no_dsn_is_a_noop(monkeypatch):
 
 def test_dsn_initialises_errors_only_without_pii(monkeypatch, capsys):
     sentry_sdk = pytest.importorskip("sentry_sdk")
-    calls, tags = [], {}
+    calls: list[dict[str, Any]] = []
+    tags: dict[str, str] = {}
     monkeypatch.setattr(sentry_sdk, "init", lambda **kw: calls.append(kw))
     monkeypatch.setattr(
         sentry_sdk, "set_tag", lambda key, value: tags.__setitem__(key, value)

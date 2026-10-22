@@ -587,7 +587,7 @@ class Store:
             sections = db.execute("""SELECT m.source_id,heading.value AS name,count(DISTINCT m.project_id) AS count
                 FROM memberships m JOIN sources s ON s.id=m.source_id AND s.active=1,
                 json_each(m.sections) heading GROUP BY m.source_id,heading.value ORDER BY heading.value""").fetchall()
-        by_source = {}
+        by_source: dict[str, list[dict[str, object]]] = {}
         for heading in sections:
             by_source.setdefault(heading["source_id"], []).append(
                 {"name": heading["name"], "count": heading["count"]}

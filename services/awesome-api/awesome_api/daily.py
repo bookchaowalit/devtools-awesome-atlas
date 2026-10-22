@@ -3,6 +3,7 @@
 import json
 import re
 from datetime import date
+from typing import Any
 
 from .parser import canonical_repository
 
@@ -31,7 +32,7 @@ def parse_daily(raw: bytes, requested_date: str) -> list[dict]:
     repos = payload.get("list")
     if not isinstance(repos, list) or not 1 <= len(repos) <= 1000:
         raise ValueError("daily snapshot ต้องมี repository 1 ถึง 1000 รายการ")
-    records = {}
+    records: dict[str, dict[str, Any]] = {}
     for rank, repository in enumerate(repos, start=1):
         repo_id = (
             canonical_repository(f"https://github.com/{repository}")
