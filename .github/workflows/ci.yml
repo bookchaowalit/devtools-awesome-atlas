@@ -18,17 +18,24 @@ concurrency:
 
 jobs:
   awesome-web:
-    uses: bookchaowalit/platform-ci-workflows/.github/workflows/ci-node.yml@c37ef9d113eefb3ed45429717cb7ca201192c3fc # v1.0.1
+    uses: bookchaowalit/platform-ci-workflows/.github/workflows/ci-node.yml@87dc5e1c7e0416886a6371d5a101bb2ccba38edd # v1.1.1
     with:
       working-directory: apps/awesome-web
       node-version: "22"
       build-command: npm run build
 
   awesome-api:
-    uses: bookchaowalit/platform-ci-workflows/.github/workflows/ci-python.yml@c37ef9d113eefb3ed45429717cb7ca201192c3fc # v1.0.1
+    uses: bookchaowalit/platform-ci-workflows/.github/workflows/ci-python.yml@87dc5e1c7e0416886a6371d5a101bb2ccba38edd # v1.1.1
     with:
       working-directory: services/awesome-api
       python-version: "3.12" # matches the python:3.12-slim runtime image
+      # Installs from uv.lock (uv sync --frozen --all-extras); mypy runs from [tool.mypy].
+      # Ratchet: measured 91.20% on 2026-10-22 (ADR-0004: threshold = measured, rounded down).
+      coverage-threshold: "91"
+      # requirements.txt (Docker image) must match uv.lock, then pytest under coverage.
+      test-command: |
+        uv export --frozen --no-dev --no-emit-project --no-hashes --no-header | diff - <(tail -n +4 requirements.txt)
+        python -m pytest -q --cov --cov-report=
 
   security:
-    uses: bookchaowalit/platform-ci-workflows/.github/workflows/security.yml@c37ef9d113eefb3ed45429717cb7ca201192c3fc # v1.0.1
+    uses: bookchaowalit/platform-ci-workflows/.github/workflows/security.yml@87dc5e1c7e0416886a6371d5a101bb2ccba38edd # v1.1.1
