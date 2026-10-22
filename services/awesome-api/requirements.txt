@@ -1,4 +1,48 @@
-fastapi>=0.115,<1
-uvicorn>=0.30,<1
-pyarrow>=18,<24
-sentry-sdk>=2.72,<3
+# Generated from uv.lock; do not edit. Regenerate with:
+#   uv export --frozen --no-dev --no-emit-project --no-hashes --no-header -o requirements.txt
+# CI fails when this file and uv.lock disagree.
+annotated-doc==0.0.5
+    # via fastapi
+annotated-types==0.8.0
+    # via pydantic
+anyio==4.15.1
+    # via starlette
+certifi==2026.10.19
+    # via sentry-sdk
+click==8.5.0
+    # via uvicorn
+fastapi==0.159.1
+    # via awesome-atlas-api
+h11==0.16.0
+    # via uvicorn
+idna==3.20
+    # via anyio
+opentelemetry-api==1.45.1
+    # via fastapi
+pyarrow==23.0.1
+    # via awesome-atlas-api
+pydantic==2.14.1
+    # via fastapi
+pydantic-core==2.50.1
+    # via pydantic
+sentry-sdk==2.73.0
+    # via awesome-atlas-api
+starlette==1.9.0
+    # via fastapi
+typing-extensions==4.16.0
+    # via
+    #   anyio
+    #   fastapi
+    #   opentelemetry-api
+    #   pydantic
+    #   pydantic-core
+    #   starlette
+    #   typing-inspection
+typing-inspection==0.4.4
+    # via
+    #   fastapi
+    #   pydantic
+urllib3==2.8.0
+    # via sentry-sdk
+uvicorn==0.54.0
+    # via awesome-atlas-api
