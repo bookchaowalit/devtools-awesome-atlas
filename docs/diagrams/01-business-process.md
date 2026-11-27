@@ -10,14 +10,18 @@ Last reviewed: 2026-11-28 · commit `4ac71a0`
 flowchart TD
   START["awesome-api process start (Railway, 1 replica, volume /data)"] --> WORKER["in-process sync worker: run now, then sleep 1800 s"]
   WORKER --> ROOT["fetch root catalog sindresorhus/awesome (raw.githubusercontent.com only, no token)"]
-  ROOT -->|same commit path as lists| LAND
+  ROOT -->|ok: same commit path as lists| LAND
+  ROOT -.->|fetch fails: error recorded, round continues with sources already in SQLite| PICK
   SQLITE -->|sources exist only after root capture is in SQLite| PICK["pick up to 16 least-recently-tried active sources"]
   PICK --> FETCH["fetch list README (HTTPS, 12 s timeout, max 4 MiB)"]
   WORKER --> DAILY["fetch up to 7 daily snapshots from github-trending-archive"]
   FETCH --> PARSE{"parser finds GitHub repo links?"}
   PARSE -->|no or fetch error| KEEP["keep last good snapshot, status degraded"]
   PARSE -->|yes| LAND["immutable landing readme.md"]
-  DAILY -->|404 day: skip, keep old snapshot; bad payload: daily error| DLAND["validated landing snapshot.json"]
+  DAILY --> DCHK{"daily payload?"}
+  DCHK -->|404 day| DSKIP["skip, keep old snapshot"]
+  DCHK -->|empty, too big or bad| DERR["daily error recorded"]
+  DCHK -->|valid| DLAND["landing snapshot.json"]
   DLAND --> BRONZE
   LAND --> BRONZE["Bronze Parquet + committed manifest (SHA-256)"]
   BRONZE --> SQLITE["SQLite projection catalog.sqlite3"]
