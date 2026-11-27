@@ -10,21 +10,23 @@ Last reviewed: 2026-11-28 · commit `4ac71a0`
 flowchart TD
   START["awesome-api process start (Railway, 1 replica, volume /data)"] --> WORKER["in-process sync worker: run now, then sleep 1800 s"]
   WORKER --> ROOT["fetch root catalog sindresorhus/awesome (raw.githubusercontent.com only, no token)"]
-  ROOT --> PICK["pick up to 16 least-recently-tried active sources"]
+  ROOT -->|same commit path as lists| LAND
+  SQLITE -->|sources exist only after root capture is in SQLite| PICK["pick up to 16 least-recently-tried active sources"]
   PICK --> FETCH["fetch list README (HTTPS, 12 s timeout, max 4 MiB)"]
   WORKER --> DAILY["fetch up to 7 daily snapshots from github-trending-archive"]
   FETCH --> PARSE{"parser finds GitHub repo links?"}
   PARSE -->|no or fetch error| KEEP["keep last good snapshot, status degraded"]
   PARSE -->|yes| LAND["immutable landing readme.md"]
-  DAILY --> LAND
+  DAILY -->|404 day: skip, keep old snapshot; bad payload: daily error| DLAND["validated landing snapshot.json"]
+  DLAND --> BRONZE
   LAND --> BRONZE["Bronze Parquet + committed manifest (SHA-256)"]
   BRONZE --> SQLITE["SQLite projection catalog.sqlite3"]
-  PARSE -->|nested kind=list| REGSRC["register new source for next round"]
+  SQLITE -->|nested kind=list rows, same transaction as the list capture| REGSRC["register new source for next round"]
   SQLITE --> API["awesome.v1 API: projects, sources, categories, compare, daily, status"]
   API --> WEB["awesome-web (React + Caddy) proxies /api/v1/*"]
   WEB --> USER["developer: search, compare lists, mention ranking, daily archive"]
   USER --> SAVED["saved projects in browser localStorage only"]
-  CLI["CLI rebuild: replay committed manifests, no network"] -.-> SQLITE
+  CLI["CLI rebuild: replay committed manifests, no network (stop the writer first)"] -.-> SQLITE
 ```
 
 Sources: `services/awesome-api/awesome_api/sync.py`, `services/awesome-api/awesome_api/app.py`, `services/awesome-api/awesome_api/lake.py`, `services/awesome-api/awesome_api/parser.py`, `services/awesome-api/awesome_api/cli.py`, `services/awesome-api/README.md`, `services/awesome-api/deployment/README.md`, `apps/awesome-web/src/App.tsx`, `PRODUCT.md`
